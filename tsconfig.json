@@ -24,12 +24,6 @@
       "@app/customer/*": [
         "libs/customer/src/*"
       ],
-      "@app/dal": [
-        "libs/dal/src"
-      ],
-      "@app/dal/*": [
-        "libs/dal/src/*"
-      ],
       "@app/transaction": [
         "libs/transaction/src"
       ],

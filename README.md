@@ -1,98 +1,156 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Wallet & Transactions API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A lightweight backend API for wallet and transaction management that merchants can integrate with.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
 
-## Description
+- Customer management with wallet balances
+- Credit and debit transactions
+- Transaction idempotency
+- Balance validation (prevents negative balances)
+- Transaction history tracking
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Architecture
 
-## Project setup
+This project uses a clean, simple architecture:
 
-```bash
-$ npm install
+```
+src/
+├── entities/              # Shared TypeORM entities
+│   ├── customer.entity.ts
+│   ├── transaction.entity.ts
+│   └── base.entity.ts
+├── migrations/            # Database migrations
+├── data-source.ts         # TypeORM CLI configuration
+└── app.module.ts          # Database connection configured here
+
+libs/
+├── customer/              # Customer business logic
+└── transaction/           # Transaction business logic
 ```
 
-## Compile and run the project
+### Why This Structure?
+
+- **Simple**: Database connection in app.module, entities shared across all modules
+- **Scalable**: Feature modules (customer, transaction) handle business logic
+- **Clean**: No unnecessary abstraction layers
+- **Direct**: Each module imports only the entities it needs
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL 14+
+
+### Installation
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
+### Environment Setup
+
+Copy `.env.example` to `.env` and configure your database:
+
+```env
+NODE_ENV=development
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=wallet_transaction
+DB_SSL=false
+PORT=8000
+
+MERCHANT_API_KEY=your_merchant_api_key
+```
+
+### Database Setup
+
+Run migrations to create the database schema:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run migration:run
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Running the Application
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Development
+npm run start:dev
+
+# Production
+npm run build
+npm run start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Database Migrations
 
-## Resources
+### Generate a new migration
 
-Check out a few resources that may come in handy when working with NestJS:
+After changing entities, generate a migration (creates `src/migrations/<timestamp>-Auto.ts`):
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+npm run migration:generate
+```
 
-## Support
+### Run pending migrations
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+npm run migration:run
+```
 
-## Stay in touch
+### Revert last migration
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+npm run migration:revert
+```
+
+## Development Commands
+
+```bash
+# Format code
+npm run format
+
+# Lint code
+npm run lint
+
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Generate test coverage
+npm run test:cov
+```
+
+## Best Practices
+
+1. **Always use cents** for monetary values to avoid floating-point precision issues
+2. **Check balance before debits** to ensure wallet never goes negative
+3. **Use idempotency keys** for all financial transactions
+4. **Use database transactions** for operations modifying multiple records
+5. **Index frequently queried fields** (already done for critical fields)
+
+## Project Structure Benefits
+
+### Simple & Direct
+- Database connection lives in `app.module.ts`
+- No abstraction layers between modules and TypeORM
+- Feature modules import only what they need
+
+### Scalable
+- Easy to add new feature modules
+- Shared entities in `src/entities/`
+- Each module manages its own business logic
+
+### Clean
+- Clear separation: infrastructure (app.module) vs business logic (libs)
+- No unnecessary DAL layer for this use case
+- TypeORM repositories provide all needed data access patterns
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+UNLICENSED
