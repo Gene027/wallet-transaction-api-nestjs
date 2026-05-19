@@ -20,6 +20,7 @@ export class TransactionController {
   @ApiResponse({ status: 401, description: 'Invalid or missing API key' })
   @ApiResponse({ status: 404, description: 'Customer not found' })
   @ApiResponse({ status: 409, description: 'Duplicate transaction within the active window — retry after the indicated seconds' })
+  @ApiResponse({ status: 422, description: 'Insufficient balance' })
   async createTransaction(
     @Body() dto: CreateTransactionDto,
     @MerchantId() merchantId: string,

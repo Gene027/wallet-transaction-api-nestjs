@@ -24,7 +24,7 @@ export class GetCustomerResponseDto {
   @ApiProperty({ description: 'The email of the customer' })
   email: string;
 
-  @ApiProperty({ description: 'The wallet balance of the customer' })
+  @ApiProperty({ description: 'The wallet balance of the customer in cents' })
   wallet_balance: number;
 
   @ApiProperty({ description: 'The created at timestamp of the customer' })

@@ -9,6 +9,11 @@ export class TransactionQueryDto extends PaginationDto {
   @IsEnum(TransactionStatus)
   status?: TransactionStatus;
 
+  @ApiPropertyOptional({ enum: TransactionType, description: 'Filter by transaction type' })
+  @IsOptional()
+  @IsEnum(TransactionType)
+  type?: TransactionType;
+
   @ApiPropertyOptional({
     example: '2024-01-01T00:00:00.000Z',
     description: 'Return transactions created on or after this ISO 8601 datetime',
@@ -30,7 +35,7 @@ export class GetTransactionHistoryResponseDto {
   @ApiProperty({ description: 'The id of the transaction' })
   id: string;
 
-  @ApiProperty({ description: 'The amount of the transaction' })
+  @ApiProperty({ description: 'The transaction amount in cents' })
   amount: number;
 
   @ApiProperty({ description: 'The type of the transaction' })

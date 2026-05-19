@@ -81,7 +81,7 @@ export class CustomerController {
     @MerchantId() merchantId: string,
     @Query() query: TransactionQueryDto,
   ): Promise<GenericStatus<PaginatedResult<GetTransactionHistoryResponseDto>>> {
-    // check if the customer exists before getting the transaction history to avoid unnecessary database queries and ensure empty rows are returned only if the customer actually does not have any transactions
+    // check if the customer exists and is associated with the merchant
     await this.customerService.findById(id, merchantId);
 
     const result = await this.transactionService.getTransactionHistory(id, query);

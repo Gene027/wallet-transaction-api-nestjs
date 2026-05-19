@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -15,6 +15,7 @@ import { PaginatedResult } from '../../../src/common/response/paginated-result';
 
 @Injectable()
 export class TransactionService {
+  private readonly logger = new Logger(TransactionService.name);
   constructor(
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
@@ -46,7 +47,13 @@ export class TransactionService {
 
     if (existing) {
       if (dto.idempotency_key) {
-        return existing;
+        this.logger.warn(`Duplicate transaction detected with the same idempotency key.`, {
+          idempotencyKey,
+          existing,
+        });
+        throw new ConflictException(
+          `Duplicate transaction detected with the same idempotency key.`,
+        );
       }
 
       if (existing.status === TransactionStatus.SUCCESS) {
@@ -55,6 +62,12 @@ export class TransactionService {
           1,
           Math.ceil((this.duplicateWindowMs - elapsedMs) / 1000),
         );
+        
+        this.logger.warn(`Duplicate transaction detected. Retry after ${retryAfterSec}s.`, {
+          idempotencyKey,
+          existing,
+        });
+
         throw new ConflictException(
           `Duplicate transaction detected. Retry after ${retryAfterSec}s.`,
         );
@@ -84,7 +97,7 @@ export class TransactionService {
       const balance = Number(customer.wallet_balance);
 
       if (balance + Number(dto.amount) < 0) {
-        return manager.save(
+        await manager.save(
           Transaction,
           manager.create(Transaction, {
             customer_id: dto.customer_id,
@@ -95,6 +108,7 @@ export class TransactionService {
             idempotency_key: idempotencyKey,
           }),
         );
+        throw new UnprocessableEntityException('Insufficient balance');
       }
 
       customer.wallet_balance = balance + dto.amount;
@@ -139,6 +153,10 @@ export class TransactionService {
 
     if (query.status) {
       qb.andWhere('t.status = :status', { status: query.status });
+    }
+
+    if (query.type) {
+      qb.andWhere('t.type = :type', { type: query.type });
     }
 
     if (query.date_from) {
