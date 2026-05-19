@@ -21,6 +21,7 @@ export class Transaction extends BaseEntity {
   @Column({
     type: 'bigint',
     comment: 'Amount in cents (positive for credit, negative for debit)',
+    transformer: { to: (v: number) => v, from: (v: string | number) => Number(v) },
   })
   amount: number;
 

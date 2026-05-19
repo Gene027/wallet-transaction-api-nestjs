@@ -27,14 +27,10 @@ export class CustomerService {
     return customer;
   }
 
-  async findByEmail(email: string): Promise<Customer | null> {
-    return this.customerRepository.findOne({
-      where: { email },
-    });
-  }
-
   async create(dto: CreateCustomerDto, merchantId: string): Promise<Customer> {
-    const existing = await this.findByEmail(dto.email);
+    const existing = await this.customerRepository.findOne({
+      where: { email: dto.email, merchant_id: merchantId },
+    });
     if (existing) {
       throw new ConflictException(`Customer with email ${dto.email} already exists`);
     }

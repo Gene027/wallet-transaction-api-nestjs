@@ -47,13 +47,8 @@ export class TransactionService {
 
     if (existing) {
       if (dto.idempotency_key) {
-        this.logger.warn(`Duplicate transaction detected with the same idempotency key.`, {
-          idempotencyKey,
-          existing,
-        });
-        throw new ConflictException(
-          `Duplicate transaction detected with the same idempotency key.`,
-        );
+        this.logger.log(`Replaying idempotent transaction.`, { idempotencyKey });
+        return existing;
       }
 
       if (existing.status === TransactionStatus.SUCCESS) {

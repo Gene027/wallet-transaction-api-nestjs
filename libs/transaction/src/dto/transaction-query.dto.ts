@@ -15,7 +15,7 @@ export class TransactionQueryDto extends PaginationDto {
   type?: TransactionType;
 
   @ApiPropertyOptional({
-    example: '2024-01-01T00:00:00.000Z',
+    example: '2026-01-01T00:00:00.000Z',
     description: 'Return transactions created on or after this ISO 8601 datetime',
   })
   @IsOptional()
@@ -23,7 +23,7 @@ export class TransactionQueryDto extends PaginationDto {
   date_from?: string;
 
   @ApiPropertyOptional({
-    example: '2024-12-31T23:59:59.999Z',
+    example: '2027-12-31T23:59:59.999Z',
     description: 'Return transactions created on or before this ISO 8601 datetime',
   })
   @IsOptional()
