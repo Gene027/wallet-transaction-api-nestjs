@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "webpack": true
+  },
+  "projects": {
+    "customer": {
+      "type": "library",
+      "root": "libs/customer",
+      "entryFile": "index",
+      "sourceRoot": "libs/customer/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/customer/tsconfig.lib.json"
+      }
+    },
+    "dal": {
+      "type": "library",
+      "root": "libs/dal",
+      "entryFile": "index",
+      "sourceRoot": "libs/dal/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/dal/tsconfig.lib.json"
+      }
+    },
+    "transaction": {
+      "type": "library",
+      "root": "libs/transaction",
+      "entryFile": "index",
+      "sourceRoot": "libs/transaction/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/transaction/tsconfig.lib.json"
+      }
+    }
+  }
+}
