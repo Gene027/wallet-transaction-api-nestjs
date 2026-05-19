@@ -26,6 +26,7 @@ export class TransactionService {
       if (existing) return existing;
     }
 
+    // Always use a transaction to ensure data consistency and rollback in case of error
     return this.dataSource.transaction(async (manager) => {
       const customer = await manager.findOne(Customer, {
         where: { id: customerId },
@@ -60,6 +61,7 @@ export class TransactionService {
       if (existing) return existing;
     }
 
+    // Always use a transaction to ensure data consistency and rollback in case of error
     return this.dataSource.transaction(async (manager) => {
       const customer = await manager.findOne(Customer, {
         where: { id: customerId },

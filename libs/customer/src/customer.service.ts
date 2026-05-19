@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Customer } from '../../../src/entities/customer.entity';
+import { CreateCustomerDto } from './dto/create-customer.dto';
 
 @Injectable()
 export class CustomerService {
@@ -14,5 +15,20 @@ export class CustomerService {
     return this.customerRepository.findOne({
       where: { email },
     });
+  }
+
+  async create(dto: CreateCustomerDto, merchantId: string): Promise<Customer> {
+    const existing = await this.findByEmail(dto.email);
+    if (existing) {
+      throw new ConflictException(`Customer with email ${dto.email} already exists`);
+    }
+
+    const customer = this.customerRepository.create({
+      name: dto.name,
+      email: dto.email,
+      merchant_id: merchantId,
+    });
+
+    return this.customerRepository.save(customer);
   }
 }

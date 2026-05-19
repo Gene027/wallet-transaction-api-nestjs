@@ -63,8 +63,63 @@ DB_NAME=wallet_transaction
 DB_SSL=false
 PORT=8000
 
-MERCHANT_API_KEY=your_merchant_api_key
+# Generate once with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+API_KEY_SECRET=your_64_char_hex_secret_here
 ```
+
+## API Key Authentication
+
+### How it works
+
+Merchant API keys are AES-256-GCM encrypted tokens. Each key embeds a merchant UUID so no database lookup is needed per request — the `ApiKeyGuard` decrypts the key inline and injects `merchantId` into the request.
+
+Key format: `wt_<base64url(iv + authTag + encryptedPayload)>`
+
+### Generating a key
+
+1. Ensure `API_KEY_SECRET` is set in `.env`.
+2. Run the generation script:
+
+```bash
+# Auto-generate a new merchant UUID
+npm run generate:api-key
+
+# Or supply an existing merchant UUID
+npm run generate:api-key -- <your-merchant-uuid>
+```
+
+Example output:
+
+```
+Generated API Key
+─────────────────────────────────────────
+Merchant ID : 3f1b2c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+API Key     : wt_ABCDefgh1234...
+
+Store the API Key securely — it cannot be recovered if lost.
+```
+
+> The Merchant ID is embedded inside the encrypted key. You only need to share the API Key with the merchant.
+
+### Using the key in requests
+
+Pass it in the `x-api-key` header:
+
+```bash
+curl -X POST http://localhost:8000/customers \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: wt_ABCDefgh1234..." \
+  -d '{"name": "Praise Blupay", "email": "praise@example.com"}'
+```
+
+### Using the key in Swagger
+
+1. Open [http://localhost:8000/docs](http://localhost:8000/docs).
+2. Click the **Authorize** button (top-right lock icon).
+3. Paste your `wt_...` key into the **ApiKey** field.
+4. Click **Authorize**, then **Close**.
+
+All protected endpoints will now send `x-api-key` automatically — identical to how Bearer token auth works in Swagger.
 
 ### Database Setup
 
