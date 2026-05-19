@@ -4,12 +4,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CustomerModule } from '@app/customer';
 import { AppController, CustomerController } from './app.controller';
 import { dataSourceOptions } from './data-source';
+import { validationSchema } from './config/validation';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validationSchema,
     }),
     TypeOrmModule.forRoot({
       ...dataSourceOptions,

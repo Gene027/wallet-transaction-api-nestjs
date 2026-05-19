@@ -29,6 +29,6 @@ export class CustomerService {
       merchant_id: merchantId,
     });
 
-    return this.customerRepository.save(customer);
+    return await this.customerRepository.save(customer);
   }
 }
