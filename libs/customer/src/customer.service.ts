@@ -1,8 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Customer } from '../../../src/entities/customer.entity';
-import { CreateCustomerDto } from './dto/create-customer.dto';
+import { CreateCustomerDto, GetCustomerResponseDto } from './dto/customer.dto';
 
 @Injectable()
 export class CustomerService {
@@ -10,6 +10,22 @@ export class CustomerService {
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
   ) {}
+
+  async findById(id: string, merchantId: string): Promise<GetCustomerResponseDto> {
+    const customer = await this.customerRepository.findOne({
+      where: { id, merchant_id: merchantId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        wallet_balance: true,
+      },
+    });
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+    return customer;
+  }
 
   async findByEmail(email: string): Promise<Customer | null> {
     return this.customerRepository.findOne({

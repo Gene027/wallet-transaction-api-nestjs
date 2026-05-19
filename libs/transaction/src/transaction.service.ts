@@ -1,12 +1,17 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { createHash } from 'crypto';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import {
   Transaction,
   TransactionType,
   TransactionStatus,
 } from '../../../src/entities/transaction.entity';
 import { Customer } from '../../../src/entities/customer.entity';
+import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { GetTransactionHistoryResponseDto, TransactionQueryDto } from './dto/transaction-query.dto';
+import { PaginatedResult } from '../../../src/common/response/paginated-result';
 
 @Injectable()
 export class TransactionService {
@@ -14,88 +19,147 @@ export class TransactionService {
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
     private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
   ) {}
 
-  async creditWallet(
-    customerId: string,
-    amount: number,
-    idempotencyKey?: string,
+  private get duplicateWindowMs(): number {
+    return this.configService.get<number>('DUPLICATE_WINDOW_SECS', 15) * 1000;
+  }
+
+  private buildAutoKey(customerId: string, amount: number): string {
+    const bucket = Math.floor(Date.now() / this.duplicateWindowMs);
+    const digest = createHash('sha256')
+      .update(`${customerId}:${amount}:${bucket}`)
+      .digest('hex')
+      .slice(0, 32);
+    return `auto_${digest}`;
+  }
+
+  async createTransaction(
+    dto: CreateTransactionDto,
+    merchantId: string,
   ): Promise<Transaction> {
-    if (idempotencyKey) {
-      const existing = await this.findByIdempotencyKey(idempotencyKey);
-      if (existing) return existing;
+    const type = Number(dto.amount) > 0 ? TransactionType.CREDIT : TransactionType.DEBIT;
+    const idempotencyKey = dto.idempotency_key ?? this.buildAutoKey(dto.customer_id, dto.amount);
+
+    const existing = await this.findByIdempotencyKey(idempotencyKey);
+
+    if (existing) {
+      if (dto.idempotency_key) {
+        return existing;
+      }
+
+      if (existing.status === TransactionStatus.SUCCESS) {
+        const elapsedMs = Date.now() - new Date(existing.created_at).getTime();
+        const retryAfterSec = Math.max(
+          1,
+          Math.ceil((this.duplicateWindowMs - elapsedMs) / 1000),
+        );
+        throw new ConflictException(
+          `Duplicate transaction detected. Retry after ${retryAfterSec}s.`,
+        );
+      }
     }
 
-    // Always use a transaction to ensure data consistency and rollback in case of error
+    return this.applyWalletDelta(dto, merchantId, idempotencyKey, type);
+  }
+
+  private async applyWalletDelta(
+    dto: CreateTransactionDto,
+    merchantId: string,
+    idempotencyKey: string,
+    type: TransactionType,
+  ): Promise<Transaction> {
     return this.dataSource.transaction(async (manager) => {
+      // Pessimistic write lock prevents concurrent balance races
       const customer = await manager.findOne(Customer, {
-        where: { id: customerId },
+        where: { id: dto.customer_id, merchant_id: merchantId },
+        lock: { mode: 'pessimistic_write' },
       });
 
       if (!customer) {
-        throw new BadRequestException('Customer not found');
+        throw new NotFoundException('Customer not found');
       }
 
-      customer.wallet_balance += amount;
+      const balance = Number(customer.wallet_balance);
+
+      if (balance + Number(dto.amount) < 0) {
+        return manager.save(
+          Transaction,
+          manager.create(Transaction, {
+            customer_id: dto.customer_id,
+            amount: dto.amount,
+            type: TransactionType.DEBIT,
+            status: TransactionStatus.FAILED,
+            failure_reason: 'Insufficient balance',
+            idempotency_key: idempotencyKey,
+          }),
+        );
+      }
+
+      customer.wallet_balance = balance + dto.amount;
       await manager.save(Customer, customer);
 
-      const transaction = manager.create(Transaction, {
-        customer_id: customerId,
-        amount,
-        type: TransactionType.CREDIT,
-        status: TransactionStatus.SUCCESS,
-        idempotency_key: idempotencyKey || null,
-      });
-
-      return await manager.save(Transaction, transaction);
+      return manager.save(
+        Transaction,
+        manager.create(Transaction, {
+          customer_id: dto.customer_id,
+          amount: dto.amount,
+          type,
+          status: TransactionStatus.SUCCESS,
+          idempotency_key: idempotencyKey,
+        }),
+      );
     });
   }
 
-  async debitWallet(
+  async getTransactionHistory(
     customerId: string,
-    amount: number,
-    idempotencyKey?: string,
-  ): Promise<Transaction> {
-    if (idempotencyKey) {
-      const existing = await this.findByIdempotencyKey(idempotencyKey);
-      if (existing) return existing;
+    query: TransactionQueryDto,
+  ): Promise<PaginatedResult<GetTransactionHistoryResponseDto>> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const qb = this.transactionRepository
+      .createQueryBuilder('t')
+      .select([
+        't.id',
+        't.amount',
+        't.type',
+        't.status',
+        't.failure_reason',
+        't.idempotency_key',
+        't.created_at',
+        't.customer_id',
+      ])
+      .where('t.customer_id = :customerId', { customerId })
+      .orderBy('t.created_at', 'DESC')
+      .offset((page - 1) * limit)
+      .limit(limit);
+
+    if (query.status) {
+      qb.andWhere('t.status = :status', { status: query.status });
     }
 
-    // Always use a transaction to ensure data consistency and rollback in case of error
-    return this.dataSource.transaction(async (manager) => {
-      const customer = await manager.findOne(Customer, {
-        where: { id: customerId },
-      });
+    if (query.date_from) {
+      qb.andWhere('t.created_at >= :date_from', { date_from: new Date(query.date_from) });
+    }
 
-      if (!customer) {
-        throw new BadRequestException('Customer not found');
-      }
+    if (query.date_to) {
+      qb.andWhere('t.created_at <= :date_to', { date_to: new Date(query.date_to) });
+    }
 
-      if (customer.wallet_balance < amount) {
-        const failedTransaction = manager.create(Transaction, {
-          customer_id: customerId,
-          amount: -amount,
-          type: TransactionType.DEBIT,
-          status: TransactionStatus.FAILED,
-          failure_reason: 'Insufficient balance',
-          idempotency_key: idempotencyKey || null,
-        });
-        return await manager.save(Transaction, failedTransaction);
-      }
+    const [items, total] = await qb.getManyAndCount();
 
-      customer.wallet_balance -= amount;
-      await manager.save(Customer, customer);
-
-      const transaction = manager.create(Transaction, {
-        customer_id: customerId,
-        amount: -amount,
-        type: TransactionType.DEBIT,
-        status: TransactionStatus.SUCCESS,
-        idempotency_key: idempotencyKey || null,
-      });
-
-      return await manager.save(Transaction, transaction);
-    });
+    return {
+      items,
+      meta: {
+        total,
+        page,
+        limit,
+        total_pages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findByIdempotencyKey(key: string): Promise<Transaction | null> {

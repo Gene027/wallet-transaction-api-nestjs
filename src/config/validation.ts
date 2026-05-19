@@ -15,4 +15,6 @@ export const validationSchema = Joi.object({
   DB_SSL: Joi.boolean().default(false),
 
   API_KEY_SECRET: Joi.string().min(64).required(),
+
+  DUPLICATE_WINDOW_SECS: Joi.number().integer().min(1).default(15),
 });

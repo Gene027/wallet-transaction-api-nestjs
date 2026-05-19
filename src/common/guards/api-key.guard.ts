@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
-import { decryptApiKey } from '../../scripts/generate-api-key';
+import { decryptApiKey } from '../crypto/api-key';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
